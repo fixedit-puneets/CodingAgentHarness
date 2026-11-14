@@ -6,9 +6,11 @@ what it reads from the repo: AGENTS.md, progress.md, decisions.md, the code and 
     python shift.py --shifts 4     # run up to 4 shifts (one per roadmap step)
     python shift.py                # run exactly one shift
     python shift.py --status       # show progress.md and git log
-    python shift.py --reset        # delete calculator_project/ and start over
+    python shift.py --reset        # restore calc.py and progress.md in this repo
 
-Setup:  pip install ollama   &&   ollama pull llama3.2:3b
+Commits land in this repository (the one that tracks origin) and are pushed
+to origin. This script does not create a second git repo.
+
 """
 import argparse
 import os
@@ -19,7 +21,8 @@ import sys
 from pathlib import Path
 
 MODEL_NAME = "llama3.2:3b"
-ROOT = Path(os.environ.get("CALC_ROOT", "calculator_project"))
+# This checkout. CALC_ROOT is only for the offline selftest, which uses a temp directory.
+ROOT = Path(os.environ.get("CALC_ROOT", Path(__file__).resolve().parent))
 MAX_ATTEMPTS = 3
 
 # =====================================================================================
@@ -215,6 +218,14 @@ def commit(paths, title, body=""):
     return git("rev-parse", "--short", "HEAD")
 
 
+def push_origin():
+    """Push HEAD to the CodingAgentHarness remote. Skip when this checkout has no origin."""
+    if "origin" not in git("remote").split():
+        return
+    print("  git push origin HEAD")
+    git("push", "-u", "origin", "HEAD")
+
+
 def run_check():
     """`make check` (falls back to python check.py when make is not installed)."""
     if shutil.which("make"):
@@ -285,7 +296,7 @@ def read(rel):
 
 
 # =====================================================================================
-# Bootstrap (idempotent) - creates the repo, the memory files and the first commit
+# Bootstrap (idempotent) - writes missing project files into the current repo
 # =====================================================================================
 ROADMAP = [
     "add_subtract: add(a, b) and subtract(a, b)",
@@ -301,21 +312,29 @@ def bootstrap():
     files = {"AGENTS.md": AGENTS_MD, "decisions.md": DECISIONS_MD, "Makefile": MAKEFILE,
              "check.py": CHECK_PY, "calc.py": CALC_STUB, ".gitignore": "__pycache__/\n*.pyc\n",
              "tests/__init__.py": "", "tests/test_calc.py": TESTS_PY}
+    created = []
     for rel, text in files.items():
         p = ROOT / rel
         if not p.exists():
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(text)
+            created.append(rel)
     if not (ROOT / "progress.md").exists():
         res = run_check()
         (ROOT / "progress.md").write_text(render_progress({
             "commit": "(none yet)", "passed": len(res["passed"]), "total": res["total"], "shift": 0,
             "completed": [], "in_progress": [], "issues": [], "next": ROADMAP, "note": ""}))
-    if not (ROOT / ".git").exists():
-        git("init", "-q")
-        git("config", "user.name", "shift-harness")
-        git("config", "user.email", "shift@example.local")
-        commit(["-A"], "init: skeleton, tests, rules, decisions, progress")
+        created.append("progress.md")
+    if (ROOT / ".git").exists():
+        if created:
+            commit(created, "add calculator files to this repo")
+            push_origin()
+        return
+    # Offline selftest only. The CodingAgentHarness checkout already has .git and origin.
+    git("init", "-q")
+    git("config", "user.name", "shift-harness")
+    git("config", "user.email", "shift@example.local")
+    commit(["-A"], "init: skeleton, tests, rules, decisions, progress")
 
 
 # =====================================================================================
@@ -407,6 +426,7 @@ def run_shift(make_client):
     # ----------------------------------- WORK -------------------------------------
     messages = [{"role": "system", "content": SYSTEM},
                 {"role": "user", "content": build_task(tag, desc, tests_src)}]
+    saved_calc = read("calc.py") if (ROOT / "calc.py").exists() else CALC_STUB
     ok, attempts, res, failing = False, 0, baseline, {}
     for attempts in range(1, MAX_ATTEMPTS + 1):
         reply = client.chat(messages)
@@ -432,7 +452,7 @@ def run_shift(make_client):
         commit(["calc.py"], f"shift {shift_no}: {tag} done", f"Why: roadmap step '{desc}'. "
                f"Tests {len(res['passed'])}/{res['total']} passed.")
     else:
-        git("checkout", "--", "calc.py")                            # keep main green
+        (ROOT / "calc.py").write_text(saved_calc)                   # keep the last good calc.py
         print("  step NOT finished -> calc.py rolled back so the repo stays green")
     final = run_check()                                             # 'run make check' at clock out
     print(f"  make check -> Tests {len(final['passed'])}/{final['total']} passed")
@@ -454,6 +474,7 @@ def run_shift(make_client):
     (ROOT / "progress.md").write_text(render_progress(state))
     commit(["progress.md"], f"shift {shift_no}: progress.md - {tag} {'done' if ok else 'blocked'}")
     print("  updated progress.md and committed (code first, progress second)")
+    push_origin()
     return ok
 
 
@@ -464,8 +485,15 @@ def main():
     ap.add_argument("--status", action="store_true")
     args = ap.parse_args()
 
-    if args.reset and ROOT.exists():
-        shutil.rmtree(ROOT)
+    if args.reset:
+        # Never delete this checkout. A separate CALC_ROOT (selftest) can be removed.
+        if ROOT.resolve() == Path(__file__).resolve().parent:
+            for rel in ("calc.py", "progress.md"):
+                p = ROOT / rel
+                if p.exists():
+                    p.unlink()
+        elif ROOT.exists():
+            shutil.rmtree(ROOT)
     bootstrap()
     if args.status:
         print(read("progress.md"))
