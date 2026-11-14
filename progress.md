@@ -1,18 +1,18 @@
 # Progress
 
 ## Current state
-commit: f81c80a
+commit: e3261ea
 tests: 10/19 passed
-shift: 1
+shift: 2
 
 ## Completed
 - add_subtract: add(a, b) and subtract(a, b)
 
 ## In progress
-- (none)
+- multiply_divide [75%]
 
 ## Known issues
-- (none)
+- multiply_divide: test_divide - AssertionError: 2 != 2.5
 
 ## Next steps
 - multiply_divide: multiply(a, b) and divide(a, b)
@@ -20,4 +20,4 @@ shift: 1
 - parse_expression: calculate("2 + 3") splits "a op b" into 3 tokens (ops + - * / ** %) and calls the functions above
 
 ## Notes for next shift
-Here is a note for the next engineer: This shift, the add_subtract step passed after 1 attempt, with 10/19 tests passing. Watch for any potential issues with the test suite that may have contributed to the remaining 9/19 tests failing.
+Here is a note for the next engineer: This shift, the multiply_divide step failed after 3 attempts due to issues with the test_divide function. Be cautious when running this step, as it is currently failing and may require further investigation.
