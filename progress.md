@@ -1,9 +1,9 @@
 # Progress
 
 ## Current state
-commit: 5dedae6
+commit: e910a0f
 tests: 10/19 passed
-shift: 3
+shift: 4
 
 ## Completed
 - add_subtract: add(a, b) and subtract(a, b)
@@ -20,4 +20,4 @@ shift: 3
 - parse_expression: calculate("2 + 3") splits "a op b" into 3 tokens (ops + - * / ** %) and calls the functions above
 
 ## Notes for next shift
-Here is a note for the next engineer: This shift, the multiply_divide step failed after 3 attempts due to a divide by zero error. Watch for test_divide_by_zero_raises_value_error, as it is currently failing.
+Here is a note for the next engineer: This shift, the multiply_divide step failed after 3 attempts due to a division by zero error. Be cautious when testing the test_divide_by_zero_raises_value_error test, as it is currently failing.
