@@ -1,9 +1,9 @@
 # Progress
 
 ## Current state
-commit: e3261ea
+commit: 5dedae6
 tests: 10/19 passed
-shift: 2
+shift: 3
 
 ## Completed
 - add_subtract: add(a, b) and subtract(a, b)
@@ -12,7 +12,7 @@ shift: 2
 - multiply_divide [75%]
 
 ## Known issues
-- multiply_divide: test_divide - AssertionError: 2 != 2.5
+- multiply_divide: test_divide_by_zero_raises_value_error - ValueError: Cannot divide by zero
 
 ## Next steps
 - multiply_divide: multiply(a, b) and divide(a, b)
@@ -20,4 +20,4 @@ shift: 2
 - parse_expression: calculate("2 + 3") splits "a op b" into 3 tokens (ops + - * / ** %) and calls the functions above
 
 ## Notes for next shift
-Here is a note for the next engineer: This shift, the multiply_divide step failed after 3 attempts due to issues with the test_divide function. Be cautious when running this step, as it is currently failing and may require further investigation.
+Here is a note for the next engineer: This shift, the multiply_divide step failed after 3 attempts due to a divide by zero error. Watch for test_divide_by_zero_raises_value_error, as it is currently failing.
